@@ -1,44 +1,51 @@
 package fr.lernejo.navy_battle;
 
-import com.sun.net.httpserver.HttpServer;
-import org.assertj.core.api.Assertions;
+import fr.lernejo.navy_battle.web_server.NavyWebServer;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.http.HttpResponse;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+public class LauncherTest {
 
+    // increment testPort between each step to avoid unwanted errors
+    private static int testPort = 10000;
 
-class LauncherTest {
-
-    @Test
-    public void test_no_args() {
-        Launcher.main(new String[] {""});
+    @AfterEach
+    public void increment_testPort() {
+        testPort++;
     }
 
     @Test
-    public void test_bad_port() {
-        try {
-            Launcher.main(new String[] {"Port"});
-        } catch (Throwable e) {
-            assertTrue(e instanceof RuntimeException);
-        }
+    public void main_with_wrong_port_arg_should_throw() {
+        Assertions.assertThrows( Exception.class, () -> Launcher.main(new String[] {"123456789"}));
     }
 
-    @Test void test_client_server() throws IOException, InterruptedException {
-        Server s = new Server(5000);
-        HttpServer server = s.initServer();
-        server.start();
-        Server s1 = new Server(5001);
-        HttpServer server1 = s1.initServer();
-        server1.start();
-        HttpResponse<String> resp = s1.createClient("http://localhost:5000");
-        int expected = HttpURLConnection.HTTP_ACCEPTED;
-        int result = resp.statusCode();
-        server.stop(1);
-        server1.stop(1);
-        Assertions.assertThat(result).as("Response should be 202 Accepted").isEqualTo(expected);
+    @Test
+    public void main_with_wrong_type_port_arg_should_throw() {
+        Assertions.assertThrows( Exception.class, () -> Launcher.main(new String[] {"thisIsNotAPort"}));
+    }
+
+    @Test
+    void launching_with_already_bound_port_should_throw_IOException() throws IOException {
+        new NavyWebServer(testPort);
+        Assertions.assertThrows( IOException.class, () -> Launcher.main(new String[] { Integer.toString(testPort) }));
+    }
+
+    @Test
+    public void main_should_not_throw_when_giving_correct_port() {
+        Assertions.assertDoesNotThrow( () -> Launcher.main(new String[] { Integer.toString(testPort) }));
+    }
+
+    @Test
+    public void main_should_not_throw_when_giving_correct_port_and_address() {
+        Assertions.assertDoesNotThrow( () -> Launcher.main(new String[] { Integer.toString(testPort++) }));
+        Assertions.assertDoesNotThrow( () -> Launcher.main(new String[] { Integer.toString(testPort), "http://localhost:"+(testPort-1) }));
+    }
+
+    @Test
+    public void main_should_not_throw_otherwise() {
+        Assertions.assertDoesNotThrow( () -> Launcher.main(new String[] {}));
     }
 }
